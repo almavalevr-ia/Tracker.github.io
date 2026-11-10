@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>17TRACK | Control de envíos v2</title>
+<style>
+*{box-sizing:border-box} html,body{margin:0;background:#f4f7fb;color:#18304c;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+.shell{max-width:1160px;margin:auto;padding:17px} header{display:flex;align-items:center;gap:12px;margin-bottom:14px}.logo{width:43px;height:43px;background:#1668a9;color:#fff;border-radius:11px;font-weight:800;font-size:23px;display:flex;align-items:center;justify-content:center}h1{margin:0;font-size:22px;letter-spacing:-.5px}h2{font-size:16px;margin:0 0 11px}.subtitle,.muted{color:#60738d}.subtitle{margin:3px 0 0;font-size:12px}
+.panel{background:#fff;border:1px solid #d7e2ef;border-radius:13px;padding:15px;margin-bottom:14px;box-shadow:0 3px 12px rgba(27,60,90,.035)}.bar{display:flex;flex-wrap:wrap;gap:9px;align-items:end}.grow{flex:1 1 260px;min-width:160px}.field{flex:1 1 120px;min-width:125px}.field-sm{flex:0 1 115px}label{display:block;font-size:12px;font-weight:700;color:#455775;margin:0 0 6px}
+input,select,textarea{width:100%;border:1px solid #bfcfe0;border-radius:8px;padding:10px;background:#fff;color:#172b46;font:14px Arial,sans-serif}input:focus,textarea:focus,select:focus{outline:2px solid #bddaf4}#trackNumber{font-size:16px;height:42px}button{border:0;border-radius:8px;background:#116aab;color:#fff;padding:11px 13px;min-height:41px;font-weight:700;font-size:13px;cursor:pointer}button.secondary{background:#e8f3ff;border:1px solid #c7dfef;color:#144e80}button.outline{background:white;color:#26618d;border:1px solid #bdd1e5}button.small{padding:7px 9px;min-height:31px;font-size:12px}button[disabled]{opacity:.55;cursor:default}.hint{font-size:12px;line-height:1.55;margin:9px 0 0;color:#65788f}.message{display:none;border-radius:8px;margin-top:11px;padding:10px;font-size:12px;line-height:1.5;background:#ebf5ff;color:#16547c}.message.show{display:block}.message.bad{background:#fff0f1;color:#a33036}.message.good{background:#ecf9f0;color:#226540}
+.list{display:flex;flex-wrap:wrap;gap:6px;max-height:175px;overflow-y:auto}.item{border:1px solid #d9e3ef;border-radius:8px;background:#f7fafd;color:#2d5475;min-height:39px;padding:7px 10px;text-align:left;white-space:nowrap}.item.active{background:#166cae;color:white;border-color:#166cae}.item span{display:block;font-size:11px;opacity:.8;margin-top:2px}.inline-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:9px}.summary{font-size:12px;color:#62758c}.two{display:flex;flex-wrap:wrap;gap:14px}.half{flex:1 1 310px;min-width:0}.wfit{white-space:nowrap}.widget{min-height:420px;overflow:auto}.trackerbox{background:#fff;border:1px solid #dde5ed;border-radius:9px;padding:12px;margin-bottom:12px}.trackerbox strong{color:#204766;display:block;margin-bottom:10px}.tracker-body{min-height:210px}.empty{min-height:300px;display:flex;align-items:center;justify-content:center;border:1px dashed #c2d2e4;border-radius:8px;color:#7186a0;text-align:center;padding:20px}.pill{padding:4px 8px;background:#ecf2f8;border-radius:18px;font-size:11px;color:#557391}.hintbox{background:#f2f7fd;border-radius:9px;padding:10px 12px;line-height:1.5;font-size:12px;color:#516e88;margin-top:12px}.warn{background:#fff8e8;color:#815d1b}footer{font-size:11px;color:#798aa0;line-height:1.5;padding:0 2px 15px}@media(max-width:600px){.shell{padding:9px}.panel{padding:12px}h1{font-size:18px}button{flex:1 1 auto}.field-sm{flex:1 1 100px}}
+</style>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<script src="https://www.17track.net/externalcall.js"></script>
+</head>
+<body>
+<main class="shell">
+<header><div class="logo">17</div><div><h1>Seguimiento de envíos <span class="pill">V2 · Prueba</span></h1><p class="subtitle">Excel 2016 · UPS, FedEx y otras transportistas · sin suscripción</p></div></header>
+<section class="panel">
+  <h2>1. Cargar y consultar tracking</h2>
+  <div class="bar">
+    <div class="grow"><label for="trackNumber">NÚMERO DE TRACKING</label><input id="trackNumber" maxlength="50" placeholder="Introduce un tracking" autocomplete="off" spellcheck="false"></div>
+    <button id="lookupOne" type="button">Consultar</button>
+    <button id="loadCells" type="button" class="secondary">Cargar celdas seleccionadas</button>
+    <button id="lookupBatch" type="button" class="outline">Consultar hasta 4 a la vez</button>
+  </div>
+  <p class="hint">En Excel, selecciona una o varias celdas de la columna TRACKING y pulsa «Cargar celdas seleccionadas». Puedes recorrer la lista o consultar hasta 4 simultáneamente. No se abrirá otra ventana.</p>
+  <div id="message" class="message" role="status" aria-live="polite"></div>
+</section>
+<section id="queuePanel" class="panel" style="display:none">
+  <div class="inline-heading"><h2 style="margin:0">2. Lista cargada</h2><span id="queueSummary" class="summary"></span></div>
+  <div id="queue" class="list"></div>
+  <div class="bar" style="margin-top:12px"><button id="previous" type="button" class="small secondary">◀ Anterior</button><button id="next" type="button" class="small secondary">Siguiente ▶</button><button id="previousBatch" type="button" class="small outline">◀ Lote anterior</button><button id="nextBatch" type="button" class="small outline">Lote siguiente ▶</button></div>
+</section>
+<section class="panel">
+  <h2>Resultado del seguimiento</h2>
+  <div id="results" class="widget"><div class="empty">Selecciona un tracking y pulsa Consultar.</div></div>
+</section>
+<section class="panel" id="recordPanel">
+  <h2>3. Registrar resultado verificado en Excel</h2>
+  <p class="hint" style="margin:-4px 0 13px">El widget de 17TRACK muestra el resultado, pero no entrega al complemento el estado ni las fechas en forma de datos. Revisa el resultado y confirma aquí lo que quieres guardar. Nunca se escriben datos sin pulsar Guardar.</p>
+  <div id="activeInfo" class="hintbox">Selecciona un número de la lista de Excel para habilitar el registro.</div>
+  <div class="bar" style="margin-top:12px">
+    <div class="field"><label for="status">STATUS confirmado</label><select id="status"><option value="">— Seleccionar —</option><option>En tránsito</option><option>Entregado</option><option>Retrasado</option><option>Incidencia</option><option>Pendiente</option><option>Devuelto</option><option>No localizado</option></select></div>
+    <div class="field"><label for="shipped">Date Shipped (opcional)</label><input id="shipped" placeholder="AAAA-MM-DD" maxlength="10" inputmode="numeric"></div>
+    <div class="field"><label for="received">Date Received (opcional)</label><input id="received" placeholder="AAAA-MM-DD" maxlength="10" inputmode="numeric"></div>
+    <div class="field-sm"><label for="alertAfter">Aviso tras días</label><input id="alertAfter" type="number" min="1" max="90" value="5"></div>
+  </div>
+  <div class="bar" style="margin-top:12px"><button id="save" type="button">Guardar en la fila de Excel</button><button id="review" type="button" class="secondary">Calcular alerta</button><span id="alertPreview" class="pill">Sin datos</span></div>
+  <div class="hintbox warn">El complemento no sobrescribe celdas que contienen fórmulas. Si tu hoja tiene encabezados <b>ALERTA</b> y <b>ÚLTIMA REVISIÓN</b>, también se actualizarán. Si no existen, el panel solamente coloreará STATUS. «Date Received» es la fecha real de entrega: no se inventa a partir del día de consulta. Guarda una copia del libro antes de probar.</div>
+</section>
+<footer>Complemento experimental independiente, no afiliado a 17TRACK. Envíos consultados a través del widget oficial de 17TRACK. Nuestro código no almacena tracking en GitHub Pages; los registros en la hoja se guardan solamente con una acción explícita. No extrae automáticamente estados o fechas del widget. No utilices claves API o contraseñas en esta página pública.</footer>
+</main>
+<script>
+(function(){
+'use strict';
+var state={items:[],active:-1,offset:0,header:null,worksheet:'',busy:false};
+var el=function(id){return document.getElementById(id);};
+function msg(t,k){var x=el('message');x.className='message show'+(k==='error'?' bad':k==='ok'?' good':'');x.textContent=t;}
+function clean(v){var s=String(v===null||typeof v==='undefined'?'':v).replace(/^\s+|\s+$/g,'').replace(/\s+/g,'');if(!s||s.length>50||!/^[A-Za-z0-9-]+$/.test(s))return '';if(/^\d+(\.\d+)?E\+\d+$/i.test(s))return '';return s;}
+function colLetter(index){var n=index+1,s='';while(n>0){n--;s=String.fromCharCode(65+n%26)+s;n=Math.floor(n/26);}return s;}
+function cleanHeader(v){return String(v||'').toLowerCase().normalize?String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,''):String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');}
+function fieldKey(v){var s=cleanHeader(v);if(s==='tracking'||s==='trackingnumber'||s==='numerodetracking'||s==='numerodeseguimiento'||s==='numtracking'||s==='awb')return 'tracking';if(s==='status'||s==='estado'||s==='shipmentstatus')return 'status';if(s==='dateshipped'||s==='shippeddate'||s==='fechadeenvio'||s==='fechaenvio')return 'shipped';if(s==='datereceived'||s==='datedelivered'||s==='deliverydate'||s==='fecharecibido'||s==='fechaentrega'||s==='fechaderecepcion')return 'received';if(s==='alerta'||s==='alert'||s==='alertas')return 'alert';if(s==='ultimarevision'||s==='lastchecked'||s==='lastcheck'||s==='fecharevision')return 'checked';return '';}
+function isoDay(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+function isDate(s){if(!s)return true;if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;var a=s.split('-'),d=new Date(Number(a[0]),Number(a[1])-1,Number(a[2]));return d.getFullYear()===Number(a[0])&&d.getMonth()+1===Number(a[1])&&d.getDate()===Number(a[2]);}
+function normalizeDate(v){var s=String(v||'').trim();if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;return '';}
+function fromSerial(v){if(typeof v==='number'&&v>10000&&v<110000){var d=new Date(Date.UTC(1899,11,30)+Math.floor(v)*86400000);return d.getUTCFullYear()+'-'+('0'+(d.getUTCMonth()+1)).slice(-2)+'-'+('0'+d.getUTCDate()).slice(-2);}return normalizeDate(v);}
+function serialDate(s){var a=s.split('-');return Math.round((Date.UTC(+a[0],+a[1]-1,+a[2])-Date.UTC(1899,11,30))/86400000);}
+function daysSince(s){if(!isDate(s)||!s)return null;var a=s.split('-');return Math.floor((Date.UTC(new Date().getFullYear(),new Date().getMonth(),new Date().getDate())-Date.UTC(+a[0],+a[1]-1,+a[2]))/86400000);}
+function alertStatus(status,ship,days){if(status==='Incidencia')return 'INCIDENCIA';if(status==='Retrasado')return 'RETRASADO';if(status==='Entregado')return 'OK';if(status==='Devuelto')return 'DEVUELTO';var d=daysSince(ship);if(d!==null&&d>=days)return 'REVISAR ('+d+' días)';return status?'SIN ALERTA':'SIN ESTADO';}
+function choose(i){if(i<0||i>=state.items.length)return;state.active=i;el('trackNumber').value=state.items[i].number;el('status').value=state.items[i].savedStatus||'';el('shipped').value='';el('received').value='';el('activeInfo').textContent=(state.items[i].row?'Fila '+state.items[i].row+' · ':'Consulta manual · ')+state.items[i].number+(state.items[i].savedStatus?' · En Excel: '+state.items[i].savedStatus:'')+(state.items[i].savedShipped?' · Enviado: '+state.items[i].savedShipped:'')+(state.items[i].savedReceived?' · Recibido: '+state.items[i].savedReceived:'');renderQueue();alertPreview();}
+function renderQueue(){var pnl=el('queuePanel'),wrap=el('queue');pnl.style.display=state.items.length?'block':'none';while(wrap.firstChild)wrap.removeChild(wrap.firstChild);for(var i=0;i<state.items.length;i++){(function(i){var it=state.items[i],b=document.createElement('button');b.type='button';b.className='item'+(i===state.active?' active':'');b.textContent=(it.row?'Fila '+it.row+' · ':'')+it.number;var small=document.createElement('span');small.textContent=it.savedStatus||'Sin registrar';b.appendChild(small);b.onclick=function(){choose(i);consultOne(it.number);};wrap.appendChild(b);})(i);}el('queueSummary').textContent=state.items.length+' tracking · '+(state.worksheet?'Hoja: '+state.worksheet:'lista manual');}
+function clearResults(){var x=el('results');while(x.firstChild)x.removeChild(x.firstChild);}
+function queryWidget(num,root){var h=document.createElement('strong');h.textContent=num;root.appendChild(h);var bx=document.createElement('div');bx.id='results-'+Math.random().toString(36).slice(2);bx.className='tracker-body';root.appendChild(bx);try{if(!window.YQV5||typeof window.YQV5.trackSingle!=='function')throw new Error('No cargó el widget de 17TRACK.');window.YQV5.trackSingle({YQ_ContainerId:bx.id,YQ_Height:470,YQ_Fc:'0',YQ_Lang:'es',YQ_Num:num});}catch(e){var p=document.createElement('p');p.textContent='No fue posible abrir el resultado: '+(e.message||String(e));bx.appendChild(p);}}
+function consultOne(val){var n=clean(val);if(!n){msg('Tracking vacío, no válido o convertido a notación científica. Usa formato Texto en Excel.', 'error');return;}clearResults();var c=document.createElement('div');c.className='trackerbox';el('results').appendChild(c);queryWidget(n,c);}
+function consultManual(){var n=clean(el('trackNumber').value);if(!n){msg('Introduce un tracking válido. Si tiene más de 15 dígitos, guárdalo como texto en Excel.','error');return;}if(state.active<0||state.items[state.active].number!==n){state.items=[{number:n,row:null}];state.active=0;state.worksheet='';state.header=null;renderQueue();}choose(state.active);consultOne(n);msg('Consulta enviada a 17TRACK. El estado no se captura automáticamente para Excel.','ok');}
+function consultBatch(){if(!state.items.length){consultManual();return;}clearResults();var end=Math.min(state.offset+4,state.items.length);for(var i=state.offset;i<end;i++){var c=document.createElement('div');c.className='trackerbox';el('results').appendChild(c);queryWidget(state.items[i].number,c);}msg('Mostrando '+(state.offset+1)+'–'+end+' de '+state.items.length+'. El widget no devuelve estados estructurados a Excel; confírmalos en el formulario.','ok');}
+function loadSelection(){if(!window.Excel||typeof Excel.run!=='function'){msg('La selección múltiple requiere la API Excel.js dentro de Excel. Prueba desde el complemento.','error');return;}el('loadCells').disabled=true;Excel.run(function(ctx){var sel=ctx.workbook.getSelectedRange();sel.load('address,rowIndex,columnIndex,rowCount,columnCount,text');var sh=sel.worksheet;sh.load('name');var header=sh.getRange('A1:AZ20');header.load('text');return ctx.sync().then(function(){var map=null,hr=-1,all=header.text;for(var r=0;r<all.length;r++){var m={};for(var c=0;c<all[r].length;c++){var k=fieldKey(all[r][c]);if(k&&typeof m[k]==='undefined')m[k]=c;}if(typeof m.tracking!=='undefined'&&(typeof m.status!=='undefined'||map===null)){map=m;hr=r;if(typeof m.status!=='undefined')break;}}if(!map)throw Error('No encontré el encabezado TRACKING en las primeras 20 filas.');if(sel.rowCount>100)throw Error('Selecciona hasta 100 filas para evitar consultas excesivas.');var col=map.tracking,start=sel.rowIndex,count=sel.rowCount;if(sel.columnIndex>col||sel.columnIndex+sel.columnCount<=col)throw Error('Selecciona al menos una celda de la columna TRACKING, no otra columna.');if(start<=hr){start=hr+1;count=(sel.rowIndex+sel.rowCount)-start;}if(count<=0)throw Error('Selecciona una o más celdas debajo del encabezado TRACKING.');var max=Math.max(map.tracking,map.status||0,map.shipped||0,map.received||0);var data=sh.getRange('A'+(start+1)+':'+colLetter(max)+(start+count));data.load('text,values');return ctx.sync().then(function(){var items=[];for(var j=0;j<count;j++){var t=clean(data.text[j][col]);if(!t)continue;var st=typeof map.status!=='undefined'?String(data.text[j][map.status]||''):'';items.push({number:t,row:start+j+1,sheet:sh.name,savedStatus:st,savedShipped:typeof map.shipped!=='undefined'?fromSerial(data.values[j][map.shipped])||String(data.text[j][map.shipped]||''):'',savedReceived:typeof map.received!=='undefined'?fromSerial(data.values[j][map.received])||String(data.text[j][map.received]||''):''});}if(!items.length)throw Error('No encontré números de tracking válidos en las filas seleccionadas.');state.items=items;state.active=0;state.offset=0;state.worksheet=sh.name;state.header={row:hr,map:map};choose(0);consultOne(items[0].number);msg('Cargados '+items.length+' tracking. '+(typeof map.status==='undefined'?'No hay columna STATUS: podrás consultar, pero no guardar estados.':'Puedes guardar estados confirmados en STATUS.') ,'ok');});});}).then(function(){el('loadCells').disabled=false;},function(err){el('loadCells').disabled=false;msg('No pude cargar la selección: '+(err.message||String(err)),'error');});}
+function alertPreview(){var i=state.active>=0?state.items[state.active]:null,st=el('status').value,ship=el('shipped').value||normalizeDate(i&&i.savedShipped),days=Math.max(1,Math.min(90,Number(el('alertAfter').value)||5));el('alertPreview').textContent=alertStatus(st,ship,days)+(st==='Entregado'&&!el('received').value&&!(i&&i.savedReceived)?' · falta fecha real de entrega':'');}
+function save(){
+  if(state.active<0||!state.items[state.active]||!state.items[state.active].row){
+    msg('Selecciona un tracking cargado desde una fila de Excel. No se puede guardar una consulta manual sin fila asociada.','error');return;
+  }
+  if(!state.header||typeof state.header.map.status==='undefined'){
+    msg('No se detectó la columna STATUS. Añade un encabezado STATUS y vuelve a cargar la selección.','error');return;
+  }
+  var item=state.items[state.active],status=el('status').value;
+  var ship=el('shipped').value.replace(/^\s+|\s+$/g,''),receive=el('received').value.replace(/^\s+|\s+$/g,'');
+  var alertDays=Math.max(1,Math.min(90,Number(el('alertAfter').value)||5));
+  if(!status){msg('Selecciona el STATUS que confirmaste en el resultado de 17TRACK.','error');return;}
+  if(!isDate(ship)||!isDate(receive)){msg('Las fechas deben tener formato AAAA-MM-DD y ser fechas válidas.','error');return;}
+  if((ship&&typeof state.header.map.shipped==='undefined')||(receive&&typeof state.header.map.received==='undefined')){
+    msg('La hoja no tiene la columna Date Shipped o Date Received para las fechas que escribiste.','error');return;
+  }
+  if(!window.Excel||typeof Excel.run!=='function'){msg('Guardar requiere abrir el complemento dentro de Excel.','error');return;}
+  if(!window.confirm('¿Guardar el estado '+status+' para '+item.number+' en la fila '+item.row+' de '+item.sheet+'? Los valores existentes pueden cambiar; las fórmulas se protegerán.'))return;
+  el('save').disabled=true;
+  Excel.run(function(ctx){
+    var sh=ctx.workbook.worksheets.getItem(item.sheet),m=state.header.map,hr=state.header.row;
+    var maxCol=Math.max.apply(null,Object.keys(m).map(function(k){return m[k];}));
+    var head=sh.getRange('A'+(hr+1)+':'+colLetter(maxCol)+(hr+1));
+    var track=sh.getCell(item.row-1,m.tracking);
+    var fields=['status'];
+    if(ship)fields.push('shipped');
+    if(receive)fields.push('received');
+    if(typeof m.alert!=='undefined')fields.push('alert');
+    if(typeof m.checked!=='undefined')fields.push('checked');
+    var target={};
+    for(var i=0;i<fields.length;i++){
+      target[fields[i]]=sh.getCell(item.row-1,m[fields[i]]);
+      target[fields[i]].load('formulas');
+    }
+    head.load('text');track.load('text');
+    return ctx.sync().then(function(){
+      if(clean(track.text[0][0])!==item.number)throw Error('El tracking de la fila cambió. Recarga la selección.');
+      for(var j=0;j<fields.length;j++){
+        var key=fields[j];
+        if(fieldKey(head.text[0][m[key]])!==key)throw Error('La columna '+key+' cambió desde que cargaste la lista. Recarga la selección.');
+        var formula=target[key].formulas[0][0];
+        if(typeof formula==='string'&&formula.charAt(0)==='=')throw Error('La celda de '+key+' contiene una fórmula. No se sobrescribió.');
+      }
+      if(fieldKey(head.text[0][m.tracking])!=='tracking')throw Error('Cambió el encabezado TRACKING. Recarga la selección.');
+      var alert=alertStatus(status,ship||normalizeDate(item.savedShipped),alertDays);
+      var colors={'En tránsito':'#dcecff','Entregado':'#d9f2e3','Retrasado':'#ffe4d9','Incidencia':'#ffced1','Pendiente':'#fff2c9','Devuelto':'#eadff5','No localizado':'#f1dfdf'};
+      var fill=(alert.indexOf('REVISAR')===0)?'#ffe4d9':(colors[status]||'#e8edf2');
+      target.status.values=[[status]];
+      target.status.format.fill.color=fill;
+      if(ship){target.shipped.values=[[serialDate(ship)]];target.shipped.numberFormat=[['yyyy-mm-dd']];}
+      if(receive){target.received.values=[[serialDate(receive)]];target.received.numberFormat=[['yyyy-mm-dd']];}
+      if(target.alert){target.alert.values=[[alert]];target.alert.format.fill.color=(alert==='INCIDENCIA'||alert==='RETRASADO'||alert.indexOf('REVISAR')===0||alert==='DEVUELTO')?'#ffe0cf':'#e7f4e9';}
+      if(target.checked){target.checked.values=[[serialDate(isoDay())]];target.checked.numberFormat=[['yyyy-mm-dd']];}
+      return ctx.sync().then(function(){
+        item.savedStatus=status;if(ship)item.savedShipped=ship;if(receive)item.savedReceived=receive;
+        choose(state.active);
+        msg('Guardado en '+item.sheet+', fila '+item.row+'. El resultado fue registrado tras tu confirmación; no se extrajo automáticamente de 17TRACK.','ok');
+      });
+    });
+  }).then(function(){el('save').disabled=false;},function(err){el('save').disabled=false;msg('No pude guardar: '+(err.message||String(err)),'error');});
+}
+el('lookupOne').onclick=consultManual;el('loadCells').onclick=loadSelection;el('lookupBatch').onclick=consultBatch;el('save').onclick=save;el('review').onclick=alertPreview;el('status').onchange=alertPreview;el('shipped').oninput=alertPreview;el('alertAfter').oninput=alertPreview;el('previous').onclick=function(){if(state.active>0){choose(state.active-1);consultOne(state.items[state.active].number);}};el('next').onclick=function(){if(state.active<state.items.length-1){choose(state.active+1);consultOne(state.items[state.active].number);}};el('previousBatch').onclick=function(){state.offset=Math.max(0,state.offset-4);consultBatch();};el('nextBatch').onclick=function(){if(state.offset+4<state.items.length)state.offset+=4;consultBatch();};el('trackNumber').onkeydown=function(ev){if((ev||window.event).keyCode===13)consultManual();};
+if(window.Office){Office.initialize=function(){msg('Conexión con Excel disponible. Selecciona la columna TRACKING para cargar varios envíos.','ok');};}
+})();
+</script>
+</body></html>
