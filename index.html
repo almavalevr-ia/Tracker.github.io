@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Seguimiento de envíos | Excel</title>
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:#f5f7fb;color:#15243a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;font-size:14px}
+    .shell{max-width:1024px;margin:0 auto;padding:18px 18px 28px}
+    header{display:flex;align-items:center;gap:12px;margin-bottom:15px}
+    .symbol{width:42px;height:42px;flex:0 0 42px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:#1564ad;color:white;font-weight:800;font-size:21px}
+    h1{font-size:21px;line-height:1.2;margin:0 0 3px}
+    .subtitle{margin:0;color:#60718b;font-size:12px}
+    .panel{border:1px solid #dbe3ed;background:white;border-radius:13px;box-shadow:0 3px 15px rgba(25,44,70,.045);padding:16px;margin-bottom:14px}
+    label{display:block;font-size:12px;font-weight:700;color:#3b4b63;margin-bottom:7px}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
+    #YQNum{flex:1 1 220px;min-width:0;height:43px;border:1px solid #c9d5e4;border-radius:8px;background:#fff;padding:0 12px;font-size:16px;color:#102642;outline:none}
+    #YQNum:focus{border-color:#1574bf;box-shadow:0 0 0 3px rgba(21,116,191,.12)}
+    button{border:0;border-radius:8px;min-height:43px;padding:0 15px;cursor:pointer;font:700 13px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+    .primary{background:#096fb1;color:white}
+    .secondary{background:#ecf4fb;color:#0c5286;border:1px solid #c8dff1}
+    button:hover{filter:brightness(.96)}
+    button:disabled{opacity:.6;cursor:default}
+    .hint{margin:9px 0 0;color:#6a7891;font-size:12px;line-height:1.45}
+    .notice{font-size:12px;border-radius:8px;padding:10px 11px;background:#edf5fc;color:#24577c;margin-top:11px;line-height:1.5;display:none}
+    .notice.visible{display:block}
+    .notice.error{background:#fff1f1;color:#a32f37}
+    .results-title{font-size:15px;font-weight:750;margin:0 0 12px}
+    #YQContainer{width:100%;min-height:425px;overflow:auto;word-wrap:break-word}
+    .placeholder{display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:350px;text-align:center;color:#8290a4;gap:8px;border:1px dashed #cbd6e4;border-radius:8px;background:#fafcff;padding:20px}
+    .placeholder strong{color:#49647c;font-size:14px}
+    .placeholder .shape{font-size:35px;line-height:1}
+    footer{font-size:11px;color:#768397;line-height:1.5}
+    @media(max-width:640px){.shell{padding:10px}.panel{padding:12px}.controls{display:block}#YQNum,button{display:block;width:100%;margin-bottom:8px}.symbol{width:36px;height:36px;flex-basis:36px}h1{font-size:19px}}
+  </style>
+  <!-- Office.js se usa solamente para leer la celda seleccionada, a petición del usuario. -->
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <!-- Script oficial del widget público de 17TRACK. -->
+  <script src="https://www.17track.net/externalcall.js"></script>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="symbol" aria-hidden="true">17</div>
+      <div>
+        <h1>Seguimiento de envíos</h1>
+        <p class="subtitle">UPS · FedEx · otras transportistas — integrado en Excel</p>
+      </div>
+    </header>
+
+    <section class="panel" aria-label="Consultar un número de seguimiento">
+      <label for="YQNum">NÚMERO DE TRACKING</label>
+      <div class="controls">
+        <input id="YQNum" maxlength="50" type="text" autocomplete="off" spellcheck="false" placeholder="Escribe o pega un tracking">
+        <button type="button" class="primary" id="trackButton">Consultar</button>
+        <button type="button" class="secondary" id="cellButton">Usar celda seleccionada</button>
+      </div>
+      <p class="hint">Para leer una celda: selecciónala en Excel y pulsa «Usar celda seleccionada». También puedes escribir el tracking manualmente.</p>
+      <div id="message" class="notice" aria-live="polite"></div>
+    </section>
+
+    <section class="panel" aria-label="Resultado de seguimiento">
+      <h2 class="results-title">Resultado del seguimiento</h2>
+      <div id="YQContainer">
+        <div class="placeholder" id="emptyState">
+          <span class="shape" aria-hidden="true">▤</span>
+          <strong>Selecciona un tracking para empezar</strong>
+          <span>El historial y el estado aparecerán aquí, sin abrir otra ventana.</span>
+        </div>
+      </div>
+    </section>
+    <footer>Interfaz independiente, no afiliada a 17TRACK, UPS ni FedEx. La consulta envía el número a 17TRACK. No guardamos números, credenciales ni estados. No modifica ninguna celda.</footer>
+  </main>
+  <script>
+  (function () {
+    "use strict";
+    var input = document.getElementById("YQNum");
+    var message = document.getElementById("message");
+    var trackButton = document.getElementById("trackButton");
+    var cellButton = document.getElementById("cellButton");
+    var trackBox = document.getElementById("YQContainer");
+    var safePlaceholder = trackBox.innerHTML;
+
+    function showMessage(msg, error) {
+      message.className = "notice visible" + (error ? " error" : "");
+      message.textContent = msg;
+    }
+    function clearMessage() {
+      message.className = "notice";
+      message.textContent = "";
+    }
+    function cleanNumber(value) {
+      var n = String(value == null ? "" : value).replace(/^\s+|\s+$/g, "");
+      // Aceptamos códigos alfanuméricos e imprimibles sin separadores de filas.
+      if (/\t|\r|\n/.test(n)) {
+        return { error: "Selecciona solamente una celda con un tracking." };
+      }
+      n = n.replace(/\s+/g, "");
+      if (!n) { return { error: "Introduce un número de tracking o selecciona una celda." }; }
+      if (n.length > 50 || !/^[A-Za-z0-9\-]+$/.test(n)) {
+        return { error: "El tracking debe contener letras, números o guiones y tener hasta 50 caracteres." };
+      }
+      if (/^\d+(\.\d+)?e\+\d+$/i.test(n)) {
+        return { error: "Excel podría haber convertido el tracking en notación científica. Pon la columna en formato Texto." };
+      }
+      return { value: n };
+    }
+    function consult(value) {
+      var parsed = cleanNumber(value);
+      if (parsed.error) { showMessage(parsed.error, true); return; }
+      if (!window.YQV5 || typeof window.YQV5.trackSingle !== "function") {
+        showMessage("El widget de 17TRACK no cargó. Comprueba la conexión y prueba a reiniciar el complemento.", true);
+        return;
+      }
+      clearMessage();
+      input.value = parsed.value;
+      try {
+        trackBox.innerHTML = "";
+        window.YQV5.trackSingle({
+          YQ_ContainerId: "YQContainer",
+          YQ_Height: 650,
+          YQ_Fc: "0",
+          YQ_Lang: "es",
+          YQ_Num: parsed.value
+        });
+      } catch (e) {
+        trackBox.innerHTML = safePlaceholder;
+        showMessage("17TRACK no pudo cargar el resultado en este navegador: " + (e.message || String(e)), true);
+      }
+    }
+    function useSelectedCell() {
+      if (!window.Office || !Office.context || !Office.context.document ||
+          typeof Office.context.document.getSelectedDataAsync !== "function") {
+        showMessage("Excel no está ofreciendo la lectura de celdas en este complemento. Puedes seguir consultando manualmente.", true);
+        return;
+      }
+      cellButton.disabled = true;
+      showMessage("Leyendo la celda seleccionada…", false);
+      try {
+        Office.context.document.getSelectedDataAsync(Office.CoercionType.Text, function (res) {
+          cellButton.disabled = false;
+          if (res.status === Office.AsyncResultStatus.Failed) {
+            showMessage("No se pudo leer la celda: " + (res.error ? res.error.message : "error desconocido"), true);
+          } else {
+            consult(res.value);
+          }
+        });
+      } catch (e) {
+        cellButton.disabled = false;
+        showMessage("La lectura de celdas no está disponible: " + (e.message || String(e)), true);
+      }
+    }
+    trackButton.onclick = function () { consult(input.value); };
+    cellButton.onclick = useSelectedCell;
+    input.onkeydown = function (e) { e = e || window.event; if (e.key === "Enter" || e.keyCode === 13) { consult(input.value); } };
+    // Excel 2016 utiliza Office.initialize; evitamos depender de APIs modernas.
+    if (window.Office) {
+      Office.initialize = function () { clearMessage(); };
+    }
+  }());
+  </script>
+</body>
+</html>
